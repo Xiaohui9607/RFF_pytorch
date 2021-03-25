@@ -1,9 +1,9 @@
 # RFF_pytorch
 ## trails
-###classification 
+### classification 
  [cifar](./cifar/README.md): fail
  
-###regression
+### regression
  [gcn on cora](pygcn/README.md): fail
 
 ## literatures
