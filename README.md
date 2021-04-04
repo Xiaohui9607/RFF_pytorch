@@ -3,8 +3,9 @@
 ### classification 
  [cifar](./cifar/README.md): fail
  
+ [gcn on cora](./gcn/README.md): fail
+ 
 ### regression
- [gcn on cora](./pygcn/README.md): fail
 
 ## literatures
 The Expressive Power of Neural Networks: A View from the Width 
