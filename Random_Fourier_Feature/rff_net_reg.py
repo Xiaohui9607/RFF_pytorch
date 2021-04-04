@@ -92,25 +92,33 @@ if __name__ == "__main__":
     ploy3 = np.polynomial.polynomial.Polynomial(np.random.rand(7))
     ploy4 = np.polynomial.polynomial.Polynomial(np.random.rand(8))
     ploy2 = np.polynomial.polynomial.Polynomial(np.random.rand(3))
-    Y = ploy1(X1) + np.sin(X2) + ploy2(X3) + ploy3(X4)+ ploy4(X5)
+    # Y = ploy1(X1) + np.sin(X2) + ploy2(X3) + ploy3(X4)+ ploy4(X5)
     X = np.hstack((X1, X2, X3, X4, X5))
     # X = X[:,np.newaxis]
-    X_train = X[:N//3*2]
-    X_val = X[N//3*2:]+(1+np.random.rand(N//3,1))*0.01
-    Y_train = Y[:N//3*2]#+ np.random.randn(N//3*2,1)*0.01
-    Y_val = Y[N//3*2:]
+    X = np.random.randn(N, 100)
 
     db = {}
     # db['loss_function'] = torch.nn.CrossEntropyLoss()			# torch.nn.functional.cross_entropy, torch.nn.MSELoss, torch.nn.CrossEntropyLoss
     db['loss_function'] = torch.nn.MSELoss(reduce='l2')
     db['d'] = X.shape[1]
-    db['RFF_Width'] = 4
+    db['RFF_Width'] = 200
     db['depth'] = 4
     db['device'] = 'cpu'
     db['out_dim'] = 1  # 1 if regression
-    db['max_ℓ#'] = 400
+    db['max_ℓ#'] = 200
     db['learning_rate'] = 0.001
     db['dataType'] = torch.FloatTensor
+
+    R = rff_net(db)
+    # R.phi = F.relu
+    X_torch = torch.from_numpy(X.astype(np.float32))
+    Y = R.predict(X_torch).cpu().detach().numpy()
+
+    X_train = X[:N//3*2]
+    X_val = X[N//3*2:]#+(1+np.random.rand(N//3,1))*0.01
+    Y_train = Y[:N//3*2]#+ np.random.randn(N//3*2,1)*0.01
+    Y_val = Y[N//3*2:]
+
 
     DM_train = DManager(X_train, Y_train, db['dataType'])
     loader_train = DataLoader(dataset=DM_train, batch_size=32, shuffle=True, pin_memory=True, drop_last=True)
@@ -133,26 +141,27 @@ if __name__ == "__main__":
     Acc2 = mean_squared_error(y_hat2, Y_val)
     Lrelu = np.array(R.loss_history)
 
-    # # Running sigmoid
-    # R = rff_net(db)
-    # R.phi = F.sigmoid
-    # basic_optimizer(R, loader_train)
-    # y_hat3 = R.predict(DM_val.X_Var).cpu().detach().numpy()
-    # # y_hat3 = np.argmax(y_hat3.cpu().detach().numpy(), axis=1)
-    # Acc3 = mean_squared_error(y_hat3, Y_val)
-    # Lsigmoid = np.array(R.loss_history)
-    #
-    # # Running tanh
-    # R = rff_net(db)
-    # R.phi = F.tanh
-    # basic_optimizer(R, loader_train)
-    # y_hat4 = R.predict(DM_val.X_Var).cpu().detach().numpy()
-    # # y_hat4 = np.argmax(y_hat4.cpu().detach().numpy(), axis=1)
-    # Acc4 = mean_squared_error(y_hat4, Y_val)
-    # Ltanh = np.array(R.loss_history)
+
+    # Running sigmoid
+    R = rff_net(db)
+    R.phi = F.sigmoid
+    basic_optimizer(R, loader_train)
+    y_hat3 = R.predict(DM_val.X_Var).cpu().detach().numpy()
+    # y_hat3 = np.argmax(y_hat3.cpu().detach().numpy(), axis=1)
+    Acc3 = mean_squared_error(y_hat3, Y_val)
+    Lsigmoid = np.array(R.loss_history)
+
+    # Running tanh
+    R = rff_net(db)
+    R.phi = F.tanh
+    basic_optimizer(R, loader_train)
+    y_hat4 = R.predict(DM_val.X_Var).cpu().detach().numpy()
+    # y_hat4 = np.argmax(y_hat4.cpu().detach().numpy(), axis=1)
+    Acc4 = mean_squared_error(y_hat4, Y_val)
+    Ltanh = np.array(R.loss_history)
 
     epochs = np.arange(Lrff.shape[0])
-    joint_loss = np.hstack((Lrelu, Lrff))
+    joint_loss = np.hstack((Lrff, Lrelu, Lsigmoid,Ltanh))
 
     import matplotlib.pyplot as plt
 
@@ -169,16 +178,16 @@ if __name__ == "__main__":
 
     LP.add_plot(epochs, Lrff, color='blue')
     LP.add_plot(epochs, Lrelu, color='green')
-    # LP.add_plot(epochs, Lsigmoid, color='red')
-    # LP.add_plot(epochs, Ltanh, color='yellow')
+    LP.add_plot(epochs, Lsigmoid, color='red')
+    LP.add_plot(epochs, Ltanh, color='yellow')
     LP.set_xlabel('Number of Epoch')
     LP.set_ylabel('Loss')
     LP.set_title('RFF Vs Relu Activation Functions')
-    LP.add_text(epochs, joint_loss, 'Green:Relu, MSE:%.3f\n'
-                                    'Blue:RFF, MSE:%.3f' %
-                                    # 'Red:Sigmoid, MSE:%.3f\n'
-                                    # 'Orange:Tanh, MSE:%.3f\n'
-                (Acc2, Acc1), alpha=0.4, beta=0.5)
+    LP.add_text(epochs, joint_loss, 'Green:RFF, MSE:%.3f\n'
+                                    'Blue:Relu, MSE:%.3f\n' 
+                                    'Red:Sigmoid, MSE:%.3f\n'
+                                    'Orange:Tanh, MSE:%.3f\n'%
+                (Acc1, Acc2, Acc3, Acc4), alpha=0.4, beta=0.5)
     LP.show()
 
     import pdb;pdb.set_trace()
