@@ -25,11 +25,11 @@ class rff_net(torch.nn.Module):
 		self.learning_rate = learning_rate
 		self.phi= RFF(rff_width=db['RFF_Width'])		# RFF width
 
-		self.W1 = torch.nn.Parameter(torch.randn((db['d'], db['RFF_Width']), device=db['device'] ), requires_grad=True)
-		self.W2 = torch.nn.Parameter(torch.randn((db['RFF_Width'], db['RFF_Width']), device=db['device'] ), requires_grad=True)
-		self.W3 = torch.nn.Parameter(torch.randn((db['RFF_Width'], db['out_dim']), device=db['device'] ), requires_grad=True)
+		self.linear1 = torch.nn.Linear(db['d'], db['RFF_Width'])
+		self.linear2 = torch.nn.Linear(db['RFF_Width'], db['RFF_Width'])
+		self.linear3 = torch.nn.Linear(db['RFF_Width'], db['out_dim'])
 
-		#self.output_network()
+	#self.output_network()
 
 	def output_network(self):
 		for name, W in self.named_parameters(): print(name, W.shape)
@@ -48,13 +48,13 @@ class rff_net(torch.nn.Module):
 		db = self.db
 
 		# Use Relu
-		y1 = torch.matmul(x, self.W1)
+		y1 = self.linear1(x)
 		phi_y1 = self.phi(y1)
 
-		y2 = torch.matmul(phi_y1, self.W2)
+		y2 = self.linear2(phi_y1)
 		phi_y2 = self.phi(y2)
 
-		y_hat = torch.matmul(phi_y2, self.W3)
+		y_hat = self.linear3(phi_y2)
 		y_hat = F.softmax(y_hat, dim=1)
 		return y_hat
 
@@ -77,42 +77,49 @@ if __name__ == "__main__":
 	torch.set_printoptions(threshold=10_00)
 	torch.set_printoptions(linewidth=400)
 
-	N = 1000
+	N = 200
 	X1 = np.random.rand(N,3)
 	X2 = np.random.rand(N,3) #+ 10
 	X = np.vstack((X1,X2))
 	Y = np.hstack((np.ones(N), np.zeros(N)))
 
+	X1 = np.random.rand(N,3)
+	X2 = np.random.rand(N,3) #+ 10
+	X_val = np.vstack((X1,X2))
+	Y_val = np.hstack((np.ones(N), np.zeros(N)))
+
 	db = {}
-	# db['loss_function'] = torch.nn.CrossEntropyLoss()			# torch.nn.functional.cross_entropy, torch.nn.MSELoss, torch.nn.CrossEntropyLoss
-	db['loss_function'] = torch.nn.MSELoss()
+	db['loss_function'] = torch.nn.CrossEntropyLoss()			# torch.nn.functional.cross_entropy, torch.nn.MSELoss, torch.nn.CrossEntropyLoss
+	# db['loss_function'] = torch.nn.MSELoss()
 	db['d'] = X.shape[1]
 	db['RFF_Width'] = 100
 	db['depth'] = 4
 	db['device'] = 'cpu'
-	db['out_dim'] = 1				# 1 if regression
+	db['out_dim'] = 2				# 1 if regression
 	db['max_ℓ#'] = 200
 	db['learning_rate'] = 0.001
 	db['dataType'] = torch.FloatTensor
 
 	DM = DManager(X, Y, db['dataType'])
 	loader = DataLoader(dataset=DM, batch_size=16, shuffle=True, pin_memory=True, drop_last=True)
+	DM_val = DManager(X_val, Y_val, db['dataType'])
+	loader_val = DataLoader(dataset=DM_val, batch_size=16, shuffle=True, pin_memory=True, drop_last=True)
 
 	#	Running RFF
 	R = rff_net(db)
 	basic_optimizer(R, loader)
-	y_hat = R.predict(DM.X_Var)
+	y_hat = R.predict(DM_val.X_Var)
 	y_hat = np.argmax(y_hat.cpu().detach().numpy(), axis=1)
-	Acc1 = accuracy_score(y_hat, Y)
+	Acc1 = accuracy_score(y_hat, Y_val)
 	Lrff = np.array(R.loss_history)
 
 	#	Running Relu
 	R = rff_net(db)
 	R.phi = F.relu
 	basic_optimizer(R, loader)
-	y_hat2 = R.predict(DM.X_Var)
+	y_hat2 = R.predict(DM_val.X_Var)
 	y_hat2 = np.argmax(y_hat2.cpu().detach().numpy(), axis=1)
-	Acc2 = accuracy_score(y_hat2, Y)
+	Acc2 = accuracy_score(y_hat2, Y_val)
 	Lrelu = np.array(R.loss_history)
 
 
@@ -120,9 +127,9 @@ if __name__ == "__main__":
 	R = rff_net(db)
 	R.phi = F.sigmoid
 	basic_optimizer(R, loader)
-	y_hat3 = R.predict(DM.X_Var)
+	y_hat3 = R.predict(DM_val.X_Var)
 	y_hat3 = np.argmax(y_hat3.cpu().detach().numpy(), axis=1)
-	Acc3 = accuracy_score(y_hat3, Y)
+	Acc3 = accuracy_score(y_hat3, Y_val)
 	Lsigmoid = np.array(R.loss_history)
 
 
@@ -130,9 +137,9 @@ if __name__ == "__main__":
 	R = rff_net(db)
 	R.phi = F.tanh
 	basic_optimizer(R, loader)
-	y_hat4 = R.predict(DM.X_Var)
+	y_hat4 = R.predict(DM_val.X_Var)
 	y_hat4 = np.argmax(y_hat4.cpu().detach().numpy(), axis=1)
-	Acc4 = accuracy_score(y_hat4, Y)
+	Acc4 = accuracy_score(y_hat4, Y_val)
 	Ltanh = np.array(R.loss_history)
 
 

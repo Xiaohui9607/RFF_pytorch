@@ -1,6 +1,6 @@
 import torch.nn as nn
 import torch.nn.functional as F
-from pygcn.layers import GraphConvolution
+from gcn.pygcn.layers import GraphConvolution
 import torch
 import numpy as np
 from torch.autograd import Variable

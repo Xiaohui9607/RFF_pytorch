@@ -9,8 +9,8 @@ import torch
 import torch.nn.functional as F
 import torch.optim as optim
 
-from pygcn.utils import load_data, accuracy
-from pygcn.models import GCN
+from gcn.pygcn.utils import load_data, accuracy
+from gcn.pygcn.models import GCN
 
 def train(epoch):
     t = time.time()
@@ -63,7 +63,7 @@ parser.add_argument('--weight_decay', type=float, default=5e-4,
                     help='Weight decay (L2 loss on parameters).')
 parser.add_argument('--hidden', type=int, default=16,
                     help='Number of hidden units.')
-parser.add_argument('--dropout', type=float, default=0.5,
+parser.add_argument('--dropout', type=float, default=0,
                     help='Dropout rate (1 - keep probability).')
 
 
